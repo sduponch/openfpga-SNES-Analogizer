@@ -88,6 +88,23 @@ Please report any issues encountered to this repo. Most likely any problems are 
 > 
 > **Support for savestates will _not_ be coming** to any of these cores. Do not ask. If you would like to learn more, see [issue #59](https://github.com/agg23/openfpga-SNES/issues/59) and [this discussion on the MiSTer forums](https://misterfpga.org/viewtopic.php?t=4944).
 
+## JVS (Analogizer JVS SNAC adapter, branch `jvs`)
+
+An arcade cabinet's JVS I/O board as the SNES controllers, through the JVS SNAC adapter (the [jvs library](https://github.com/sduponch/jvs)'s `jvs_ctrl`).
+Tested on an Analogue Pocket with a Sega 838-13683B board (Yoshi's Safari with the Super Scope and recoil).
+
+- Select **JVS**, **JVS + Recoil** or **JVS + Recoil Auto** in the core's SNAC Adapter list (SNAC type 0x15..0x17:
+  0x14 is the PSX lightgun here).
+- Panel (Nintendo Super System layout): top row push 1..3 = Y X L, bottom row push 4..6 = B A R, Start = Start,
+  Service = Select; coins are not used.
+- **JVS Profile** (data slot, `Assets/snes/agg23.SNES_Analogizer/jvs_*.bin`, loaded by the Chip32 loader): with a
+  gun in the profile, its P1 axes aim the Super Scope (the core's lightgun on the stick) and its trigger is Fire only
+  (it is left out of the pad mapping). Recoil: 50 ms a shot (Recoil) or 50 ms on / 150 ms off while held (Auto).
+- To fit the JVS in the main and PAL variants (they were at 103-104 %): the ROMs' JTAG memory editor is off
+  (`bram.vhd` `ENABLE_RUNTIME_MOD=NO`), HQ2x is removed (`ANALOGIZER_NO_HQ2X`: the hq2x setting falls back to the plain
+  scandoubler), and the JVS library's `JVS_LITE`, `JVS_NO_COIN`, `JVS_MAX_NODES=1` are set (no coin, rotary, keycode,
+  screen position, misc or analog outputs, one node).
+
 ## Installation
 
 ### Easy mode
