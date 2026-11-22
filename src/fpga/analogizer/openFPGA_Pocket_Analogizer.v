@@ -72,6 +72,12 @@
 module openFPGA_Pocket_Analogizer #(parameter MASTER_CLK_FREQ=50_000_000, parameter LINE_LENGTH) (
 	input wire i_clk,
     input wire i_rst,
+	//JVS profile (jvs_vendor.bin, written by the APF bridge in clk_74a) and the gun recoil mode (0 off, 1 single, 2 auto)
+	input wire clk_74a,
+	input wire jvs_profile_wr,
+	input wire [5:0] jvs_profile_addr,
+	input wire [31:0] jvs_profile_data,
+	input wire [1:0] jvs_recoil_mode,
 	input wire i_ena,
 	//Video interface
 	input wire video_clk,
@@ -164,6 +170,11 @@ module openFPGA_Pocket_Analogizer #(parameter MASTER_CLK_FREQ=50_000_000, parame
 		.CART_PIN31_OUT(CART_PIN31_OUT),
 		.CART_PIN31_IN(CART_PIN31_IN),
 		.CART_PIN31_DIR(CART_PIN31_DIR),
+		.clk_74a(clk_74a),
+		.vendor_wr(jvs_profile_wr),
+		.vendor_wr_addr(jvs_profile_addr),
+		.vendor_wr_data(jvs_profile_data),
+		.recoil_mode(jvs_recoil_mode),
 		//debug
 		.DBG_TX(DBG_TX),
     	.o_stb(o_stb)
@@ -294,7 +305,11 @@ module openFPGA_Pocket_Analogizer #(parameter MASTER_CLK_FREQ=50_000_000, parame
 	scandoubler_2 #(.LENGTH(LINE_LENGTH), .HALF_DEPTH(0)) sd
 	(
 		.clk_vid(i_clk),
+`ifdef ANALOGIZER_NO_HQ2X
+		.hq2x(1'b0), // HQ2x removed for area: the "hq2x" fx falls back to the plain scandoubler
+`else
 		.hq2x(fx[2]),
+`endif
 
 		.ce_pix(ce_pix),
 		.hs_in(Hsync),

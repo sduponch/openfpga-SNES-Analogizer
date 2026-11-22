@@ -184,6 +184,18 @@
           {
             "value": "0x14",
             "name": "PSX (P1 Lightgun)"
+          },
+          {
+            "value": "0x15",
+            "name": "JVS"
+          },
+          {
+            "value": "0x16",
+            "name": "JVS + Recoil"
+          },
+          {
+            "value": "0x17",
+            "name": "JVS + Recoil Auto"
           }
         ]
     },

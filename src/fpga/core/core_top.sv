@@ -830,6 +830,13 @@ wire is_analog_input = (snac_game_cont_type == 5'h13);
 
 //use PSX Dual Shock style left analog stick as lightgun aiming
 wire is_lightgun_input = (snac_game_cont_type == 5'h14);
+//"SNAC Adapter" 0x15 JVS, 0x16 JVS + gun recoil (a pulse per trigger press), 0x17 JVS + recoil auto (machine gun): the
+//Analogizer sees 0x15 for the three (its GC_JVS; 0x14 is the PSX lightgun above), the recoil mode comes from the choice
+wire       snac_jvs_any = (snac_game_cont_type == 5'h15) || (snac_game_cont_type == 5'h16) || (snac_game_cont_type == 5'h17);
+wire [4:0] snac_type_to_analogizer = snac_jvs_any ? 5'h15 : snac_game_cont_type;
+wire [1:0] jvs_recoil_mode_s = (snac_game_cont_type == 5'h16) ? 2'd1 : (snac_game_cont_type == 5'h17) ? 2'd2 : 2'd0;
+//JVS profile (jvs_vendor.bin data slot, 256 bytes at 0x50000000): straight to the Analogizer (clk_74a)
+wire jvs_profile_wr = bridge_wr && (bridge_addr[31:24] == 8'h50) && (bridge_addr[23:8] == 16'h0);
 
 
 //! Player 1 ---------------------------------------------------------------------------
@@ -884,8 +891,8 @@ always @(posedge clk_sys_21_48) begin
     case(snac_cont_assignment)
     4'h0:    begin 
                 p1_controls <= {p1_btn[15:4],p1_right,p1_left,p1_down,p1_up};
-                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : 16'd0;
-                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : 16'd0;
+                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : snac_jvs_any ? {8'd0, p1_stick[7:0]} : 16'd0;
+                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : snac_jvs_any ? {8'd0, p1_stick[15:8]} : 16'd0;
                 p2_controls <= cont2_key_s;
                 p3_controls <= cont3_key_s;
                 p4_controls <= cont4_key_s;
@@ -900,8 +907,8 @@ always @(posedge clk_sys_21_48) begin
               end
     4'h2:    begin
                 p1_controls <= {p1_btn[15:4],p1_right,p1_left,p1_down,p1_up}; 
-                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : 16'd0;
-                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : 16'd0;
+                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : snac_jvs_any ? {8'd0, p1_stick[7:0]} : 16'd0;
+                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : snac_jvs_any ? {8'd0, p1_stick[15:8]} : 16'd0;
                 p2_controls <= {p2_btn[15:4],p2_right,p2_left,p2_down,p2_up};
                 p3_controls <= cont3_key_s;
                 p4_controls <= cont4_key_s;
@@ -916,8 +923,8 @@ always @(posedge clk_sys_21_48) begin
               end
     4'h4:    begin
                 p1_controls <= {p1_btn[15:4],p1_right,p1_left,p1_down,p1_up}; 
-                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : 16'd0;
-                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : 16'd0;
+                p1_stick_x  <= (is_lightgun_input) ? snac1_joy_x_calibrated : snac_jvs_any ? {8'd0, p1_stick[7:0]} : 16'd0;
+                p1_stick_y  <= (is_lightgun_input) ? snac1_joy_y_calibrated : snac_jvs_any ? {8'd0, p1_stick[15:8]} : 16'd0;
                 p2_controls <= {p2_btn[15:4],p2_right,p2_left,p2_down,p2_up};
                 p3_controls <= p3_btn;
                 p4_controls <= p4_btn;
@@ -979,6 +986,11 @@ endgenerate
 openFPGA_Pocket_Analogizer #(.MASTER_CLK_FREQ(MASTER_CLK_FREQ), .LINE_LENGTH(520)) analogizer (
 	.i_clk(clk_sys_42_56),
 	.i_rst((~pll_core_locked || reset_button_s)), //i_rst is active high
+	.clk_74a(clk_74a),
+	.jvs_profile_wr(jvs_profile_wr),
+	.jvs_profile_addr(bridge_addr[7:2]),
+	.jvs_profile_data(bridge_wr_data),
+	.jvs_recoil_mode(jvs_recoil_mode_s),
 	.i_ena(1'b1),
 	//Video interface
   .video_clk(clk_sys_42_56),
@@ -1000,8 +1012,8 @@ openFPGA_Pocket_Analogizer #(.MASTER_CLK_FREQ(MASTER_CLK_FREQ), .LINE_LENGTH(520
   .scandoubler(scandoubler), //logic for disable/enable the scandoubler
 	.fx(fx), //0 disable, 1 scanlines 25%, 2 scanlines 50%, 3 scanlines 75%, 4 hq2x
 	//SNAC interface
-	.conf_AB((snac_game_cont_type >= 5'd16)),              //0 conf. A(default), 1 conf. B (see graph above)
-	.game_cont_type(snac_game_cont_type), //0-15 Conf. A, 16-31 Conf. B
+	.conf_AB((snac_type_to_analogizer >= 5'd16) && (snac_type_to_analogizer != 5'd21)), //0 conf. A(default), 1 conf. B (see graph above); JVS (0x15) uses Conf. A
+	.game_cont_type(snac_type_to_analogizer), //0-15 Conf. A, 16-31 Conf. B (JVS 0x15..0x17 as 0x15)
 	.p1_btn_state(p1_btn),
   .p1_joy_state(p1_stick),
 	.p2_btn_state(p2_btn),  

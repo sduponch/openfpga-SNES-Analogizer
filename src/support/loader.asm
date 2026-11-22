@@ -5,6 +5,7 @@ constant DEBUG = 0
 
 constant rom_dataslot = 0
 constant save_dataslot = 10
+constant jvs_profile_dataslot = 24
 
 // Host init command
 constant host_init = 0x4002
@@ -210,6 +211,13 @@ pmpw r1,r2 // Write ioctl_download = 1
 
 ld r1,#save_dataslot
 loadf r1 // Load Save
+
+// JVS profile (jvs_vendor.bin data slot, Analogizer JVS): only if a file is there
+ld r1,#jvs_profile_dataslot
+queryslot r1
+jp nz,jvs_profile_done
+loadf r1 // Load JVS profile
+jvs_profile_done:
 
 ld r1,#0 // Set address for write
 ld r2,#0 // Downloading end

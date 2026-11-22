@@ -1,0 +1,4 @@
+[submodule "src/fpga/analogizer/jvs"]
+	path = src/fpga/analogizer/jvs
+	url = https://github.com/sduponch/jvs.git
+	branch = bus_state
